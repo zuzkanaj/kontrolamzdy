@@ -22,9 +22,9 @@
     <section id="app" class="hidden">
       <header class="topbar">
         <div>
-          <div class="badge">FNsP Prešov · MVP</div>
+          <div class="badge">FNsP Prešov · testovacia verzia</div>
           <h1>KontrolaMzdy</h1>
-          <p>Dokumenty sa spracujú iba v tomto prehliadači a nikam sa neodosielajú.</p>
+          <p>Fotografie sa spracujú iba v tomto prehliadači a nikam sa neodosielajú.</p>
         </div>
         <button id="logoutBtn" class="ghost">Odhlásiť</button>
       </header>
@@ -43,7 +43,7 @@
       </section>
 
       <section class="actions">
-        <button id="analyzeBtn" class="primary">Načítať a skontrolovať</button>
+        <button id="analyzeBtn" class="primary">1. Načítať dokumenty</button>
         <button id="demoBtn" class="secondary">Ukázať demo – jún 2026</button>
       </section>
 
@@ -56,12 +56,19 @@
       <section id="confirmCard" class="card hidden">
         <div class="section-head">
           <div>
-            <h2>Skontrolujte načítané údaje</h2>
-            <p>OCR nemusí každé číslo prečítať správne. Pred výpočtom hodnoty opravte.</p>
+            <div class="step">KROK 2</div>
+            <h2>Skontrolujte a opravte načítané údaje</h2>
+            <p>Červené polia sa nepodarilo spoľahlivo prečítať. Doplňte ich podľa dokumentov. Až potom spustite kontrolu.</p>
           </div>
-          <button id="calculateBtn" class="primary">Vypočítať výsledok</button>
+          <button id="calculateBtn" class="primary">3. Skontrolovať mzdu</button>
         </div>
-        <div id="fields" class="fields"></div>
+        <div id="missingNotice" class="notice hidden"></div>
+        <div id="fields" class="field-groups"></div>
+        <details class="raw-details">
+          <summary>Zobraziť surový text načítaný z dokumentov</summary>
+          <h3>Dochádzka</h3><pre id="rawAttendance"></pre>
+          <h3>Výplatná páska</h3><pre id="rawPayslip"></pre>
+        </details>
       </section>
 
       <section id="resultCard" class="card hidden">
@@ -69,13 +76,12 @@
         <div id="results" class="results"></div>
         <details>
           <summary>Čo zatiaľ kalkulátor nevie bezpečne overiť</summary>
-          <p>Presnú sumu neaktívnej pohotovosti a nadčasového príplatku. V týchto položkách kontroluje počet hodín; na overenie sumy ešte potrebujeme interné sadzby alebo pravidlá nemocnice.</p>
+          <p>Presnú sumu neaktívnej pohotovosti a nadčasového príplatku. V týchto položkách kontroluje počet hodín; na overenie sumy ešte potrebujeme interné pravidlá nemocnice.</p>
         </details>
       </section>
     </section>
   </main>
 
-  <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.min.mjs" type="module"></script>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <script src="app.js"></script>
 </body>
