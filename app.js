@@ -13,6 +13,18 @@ function loginUser(){
 $('logoutBtn').onclick = () => { sessionStorage.removeItem('km_auth'); location.reload(); };
 if (sessionStorage.getItem('km_auth') === '1') { login.classList.add('hidden'); app.classList.remove('hidden'); }
 
+function updateAttendanceFileList(){
+  const files = $('attendanceFile').files;
+  const list = $('attendanceList');
+  if(!files || files.length===0){
+    list.innerHTML='';
+    return;
+  }
+  const items = Array.from(files).map(f=>`<div class="file-item">${f.name}</div>`).join('');
+  list.innerHTML=`${items}<div class="file-count">${files.length} súbor${files.length===1?'':'y'}</div>`;
+}
+$('attendanceFile').addEventListener('change', updateAttendanceFileList);
+
 const groups = [
   { title:'Dochádzka – údaje z výkazu', fields:[
     ['workDaysHours','Pracovný fond','hod.'],
@@ -88,6 +100,19 @@ async function ocrFile(file, label, start, span){
   }
   return text;
 }
+async function processMultipleAttendanceFiles(fileList, startProgress, totalSpan){
+  let combinedText = '';
+  const totalFiles = fileList.length;
+  for(let fileIndex=0; fileIndex<totalFiles; fileIndex++){
+    const file = fileList[fileIndex];
+    const fileSpan = totalSpan / totalFiles;
+    const fileStart = startProgress + (fileIndex * fileSpan);
+    setProgress(fileStart, `Dochádzka: čítam súbor ${fileIndex+1}/${totalFiles}...`);
+    const text = await ocrFile(file, `Dochádzka (${fileIndex+1}/${totalFiles})`, fileStart, fileSpan);
+    combinedText += '\n' + text;
+  }
+  return combinedText;
+}
 function setProgress(p,t){ ns.setProgress ? ns.setProgress(p,t) : ($('progressBar').style.width=`${Math.max(0,Math.min(100,p))}%`, $('progressText').textContent=t); }
 function renderFields(){
   ns.renderFields ? ns.renderFields(groups, values, rawAttendance, rawPayslip) : (()=>{
@@ -113,17 +138,18 @@ function renderFields(){
   })();
 }
 $('analyzeBtn').onclick=async()=>{
-  const af=$('attendanceFile').files[0], pf=$('payslipFile').files[0];
-  if(!af||!pf){alert('Nahrajte oba dokumenty.');return;}
+  const afFiles = Array.from($('attendanceFile').files);
+  const pf = $('payslipFile').files[0];
+  if(afFiles.length===0 || !pf){alert('Nahrajte aspoň jednu dochádzku a výplatnú pásku.');return;}
   $('progressCard').classList.remove('hidden'); $('confirmCard').classList.add('hidden'); $('resultCard').classList.add('hidden');
   try{
-    setProgress(2,'Pripravujem dochádzku…');
-    rawAttendance=await ocrFile(af,'Dochádzka',3,45);
-    setProgress(50,'Pripravujem výplatnú pásku…');
-    rawPayslip=await ocrFile(pf,'Výplatná páska',50,45);
-    values=parseDocuments(rawAttendance,rawPayslip);
-    setProgress(100,'Hotovo. Skontrolujte načítané hodnoty.');
-    setTimeout(()=>{$('progressCard').classList.add('hidden');renderFields();},350);
+    setProgress(2, 'Pripravujem dochádzky…');
+    rawAttendance = await processMultipleAttendanceFiles(afFiles, 3, 45);
+    setProgress(50, 'Pripravujem výplatnú pásku…');
+    rawPayslip = await ocrFile(pf, 'Výplatná páska', 50, 45);
+    values = parseDocuments(rawAttendance, rawPayslip);
+    setProgress(100, 'Hotovo. Skontrolujte načítané hodnoty.');
+    setTimeout(()=>{$('progressCard').classList.add('hidden');renderFields();}, 350);
   }catch(e){console.error(e);alert('Dokument sa nepodarilo spracovať. Skúste kvalitnejšiu fotografiu.');}
 };
 $('demoBtn').onclick=()=>{
@@ -161,9 +187,11 @@ function row(name,expected,actual,tolerance=0.05,note=''){
 $('calculateBtn').onclick=()=>{
   const missing=[];
   for(const [key,label] of allFields){
-    const input=$(`f_${key}`); values[key]=normalizeNumber(input.value);
+    const input=$(`f_${key}`);
+    if(!input) continue;
+    values[key]=normalizeNumber(input.value);
     input.closest('.field').classList.toggle('missing', values[key]===null);
-    if(values[key]===null && key!=='otherPaid') missing.push(label);
+    if(values[key]===null && key!=='otherPaid' && key!=='personalMonthly' && key!=='otherMonthly' && key!=='personalPaid') missing.push(label);
   }
   if(missing.length){
     $('missingNotice').classList.remove('hidden');
@@ -171,6 +199,9 @@ $('calculateBtn').onclick=()=>{
     $('confirmCard').scrollIntoView({behavior:'smooth'}); return;
   }
   if(values.otherPaid===null) values.otherPaid=0;
+  if(values.personalMonthly===null) values.personalMonthly=0;
+  if(values.otherMonthly===null) values.otherMonthly=0;
+  if(values.personalPaid===null) values.personalPaid=0;
   const summary = ns.buildResultSummary ? ns.buildResultSummary(values) : null;
   const checks = summary ? summary.checks : [];
   const bad = summary ? summary.bad : [];

@@ -32,8 +32,9 @@
       <section class="card upload-grid">
         <div class="upload-box">
           <h2>1. Výkaz dochádzky</h2>
-          <input id="attendanceFile" type="file" accept="image/*,.pdf" />
-          <p class="small">JPG, PNG alebo PDF</p>
+          <input id="attendanceFile" type="file" accept="image/*,.pdf" multiple />
+          <p class="small">JPG, PNG alebo PDF – môžete vybrať viac súborov</p>
+          <div id="attendanceList" class="file-list"></div>
         </div>
         <div class="upload-box">
           <h2>2. Výplatná páska</h2>
