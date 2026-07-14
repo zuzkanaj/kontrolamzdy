@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="sk">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>KontrolaMzdy – FNsP Prešov</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="shell">
+    <section id="login" class="card login-card">
+      <div class="badge">Interný prototyp</div>
+      <h1>KontrolaMzdy</h1>
+      <p>Kontrola výkazu a výplatnej pásky pre jedno oddelenie FNsP Prešov.</p>
+      <label>Heslo
+        <input id="password" type="password" autocomplete="current-password" placeholder="Zadajte heslo" />
+      </label>
+      <button id="loginBtn" class="primary">Prihlásiť</button>
+      <p id="loginError" class="error hidden">Nesprávne heslo.</p>
+    </section>
+
+    <section id="app" class="hidden">
+      <header class="topbar">
+        <div>
+          <div class="badge">FNsP Prešov · MVP</div>
+          <h1>KontrolaMzdy</h1>
+          <p>Dokumenty sa spracujú iba v tomto prehliadači a nikam sa neodosielajú.</p>
+        </div>
+        <button id="logoutBtn" class="ghost">Odhlásiť</button>
+      </header>
+
+      <section class="card upload-grid">
+        <div class="upload-box">
+          <h2>1. Výkaz dochádzky</h2>
+          <input id="attendanceFile" type="file" accept="image/*,.pdf" />
+          <p class="small">JPG, PNG alebo PDF</p>
+        </div>
+        <div class="upload-box">
+          <h2>2. Výplatná páska</h2>
+          <input id="payslipFile" type="file" accept="image/*,.pdf" />
+          <p class="small">JPG, PNG alebo PDF</p>
+        </div>
+      </section>
+
+      <section class="actions">
+        <button id="analyzeBtn" class="primary">Načítať a skontrolovať</button>
+        <button id="demoBtn" class="secondary">Ukázať demo – jún 2026</button>
+      </section>
+
+      <section id="progressCard" class="card hidden">
+        <h2>Spracovanie dokumentov</h2>
+        <div class="progress"><div id="progressBar"></div></div>
+        <p id="progressText">Pripravujem…</p>
+      </section>
+
+      <section id="confirmCard" class="card hidden">
+        <div class="section-head">
+          <div>
+            <h2>Skontrolujte načítané údaje</h2>
+            <p>OCR nemusí každé číslo prečítať správne. Pred výpočtom hodnoty opravte.</p>
+          </div>
+          <button id="calculateBtn" class="primary">Vypočítať výsledok</button>
+        </div>
+        <div id="fields" class="fields"></div>
+      </section>
+
+      <section id="resultCard" class="card hidden">
+        <div id="verdict" class="verdict"></div>
+        <div id="results" class="results"></div>
+        <details>
+          <summary>Čo zatiaľ kalkulátor nevie bezpečne overiť</summary>
+          <p>Presnú sumu neaktívnej pohotovosti a nadčasového príplatku. V týchto položkách kontroluje počet hodín; na overenie sumy ešte potrebujeme interné sadzby alebo pravidlá nemocnice.</p>
+        </details>
+      </section>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.min.mjs" type="module"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
