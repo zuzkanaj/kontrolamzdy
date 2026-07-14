@@ -54,6 +54,17 @@
         <p id="progressText">Pripravujem…</p>
       </section>
 
+      <section id="errorCard" class="card hidden">
+        <div style="color:#a32929;margin-bottom:12px">
+          <h2>⚠️ Chyba pri spracovaní</h2>
+          <p id="errorMessage"></p>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button id="retryBtn" class="primary">Skúsiť znova</button>
+          <button id="continueBtn" class="secondary">Pokračovať s upravenými údajmi</button>
+        </div>
+      </section>
+
       <section id="confirmCard" class="card hidden">
         <div class="section-head">
           <div>

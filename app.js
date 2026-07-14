@@ -84,18 +84,52 @@ async function fileToImages(file){
       const page=await pdf.getPage(i), viewport=page.getViewport({scale:2.3});
       const canvas=document.createElement('canvas'); canvas.width=viewport.width; canvas.height=viewport.height;
       await page.render({canvasContext:canvas.getContext('2d'),viewport}).promise;
-      images.push(canvas.toDataURL('image/png'));
+      images.push(await compressImage(canvas.toDataURL('image/png')));
     }
     return images;
   }
-  return [URL.createObjectURL(file)];
+  const url = URL.createObjectURL(file);
+  const img = new Image();
+  return new Promise((resolve)=>{
+    img.onload = async () => {
+      const canvas = document.createElement('canvas');
+      const compressed = await compressImage(url);
+      resolve([compressed]);
+    };
+    img.src = url;
+  });
+}
+async function compressImage(dataUrl){
+  return new Promise((resolve)=>{
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const maxDim = 1800;
+      const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL('image/jpeg', 0.85));
+    };
+    img.src = dataUrl;
+  });
+}
+function withTimeout(promise, ms){
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout po ' + ms + 'ms')), ms))
+  ]);
 }
 async function ocrFile(file, label, start, span){
   const images=await fileToImages(file); let text='';
   for(let i=0;i<images.length;i++){
-    const result=await Tesseract.recognize(images[i],'eng',{logger:m=>{
-      if(m.status==='recognizing text') setProgress(start+span*((i+m.progress)/images.length),`${label}: čítam stranu ${i+1}/${images.length}`);
-    }});
+    const result=await withTimeout(
+      Tesseract.recognize(images[i],'eng',{logger:m=>{
+        if(m.status==='recognizing text') setProgress(start+span*((i+m.progress)/images.length),`${label}: čítam stranu ${i+1}/${images.length}`);
+      }}),
+      45000
+    );
     text+='\n'+result.data.text;
   }
   return text;
@@ -103,13 +137,24 @@ async function ocrFile(file, label, start, span){
 async function processMultipleAttendanceFiles(fileList, startProgress, totalSpan){
   let combinedText = '';
   const totalFiles = fileList.length;
+  const errors = [];
   for(let fileIndex=0; fileIndex<totalFiles; fileIndex++){
-    const file = fileList[fileIndex];
-    const fileSpan = totalSpan / totalFiles;
-    const fileStart = startProgress + (fileIndex * fileSpan);
-    setProgress(fileStart, `Dochádzka: čítam súbor ${fileIndex+1}/${totalFiles}...`);
-    const text = await ocrFile(file, `Dochádzka (${fileIndex+1}/${totalFiles})`, fileStart, fileSpan);
-    combinedText += '\n' + text;
+    try{
+      const file = fileList[fileIndex];
+      const fileSpan = totalSpan / totalFiles;
+      const fileStart = startProgress + (fileIndex * fileSpan);
+      const fileName = file.name;
+      setProgress(fileStart, `📄 ${fileName} | Spracúvam ${fileIndex+1}/${totalFiles}...`);
+      const text = await ocrFile(file, `Dochádzka (${fileIndex+1}/${totalFiles})`, fileStart, fileSpan);
+      combinedText += '\n' + text;
+    }catch(e){
+      const err = `Súbor "${fileList[fileIndex].name}": ${e.message}`;
+      console.error(err);
+      errors.push(err);
+    }
+  }
+  if(errors.length > 0){
+    throw new Error('Chyby pri spracovaní:\n' + errors.join('\n'));
   }
   return combinedText;
 }
@@ -137,11 +182,26 @@ function renderFields(){
     $('confirmCard').scrollIntoView({behavior:'smooth'});
   })();
 }
+function resetAnalysis(){
+  $('progressCard').classList.add('hidden');
+  $('confirmCard').classList.add('hidden');
+  $('resultCard').classList.add('hidden');
+  $('errorCard').classList.add('hidden');
+  $('attendanceFile').value='';
+  $('payslipFile').value='';
+  updateAttendanceFileList();
+  values={};
+  rawAttendance='';
+  rawPayslip='';
+}
 $('analyzeBtn').onclick=async()=>{
   const afFiles = Array.from($('attendanceFile').files);
   const pf = $('payslipFile').files[0];
   if(afFiles.length===0 || !pf){alert('Nahrajte aspoň jednu dochádzku a výplatnú pásku.');return;}
-  $('progressCard').classList.remove('hidden'); $('confirmCard').classList.add('hidden'); $('resultCard').classList.add('hidden');
+  $('progressCard').classList.remove('hidden'); 
+  $('confirmCard').classList.add('hidden'); 
+  $('resultCard').classList.add('hidden');
+  $('errorCard').classList.add('hidden');
   try{
     setProgress(2, 'Pripravujem dochádzky…');
     rawAttendance = await processMultipleAttendanceFiles(afFiles, 3, 45);
@@ -150,7 +210,20 @@ $('analyzeBtn').onclick=async()=>{
     values = parseDocuments(rawAttendance, rawPayslip);
     setProgress(100, 'Hotovo. Skontrolujte načítané hodnoty.');
     setTimeout(()=>{$('progressCard').classList.add('hidden');renderFields();}, 350);
-  }catch(e){console.error(e);alert('Dokument sa nepodarilo spracovať. Skúste kvalitnejšiu fotografiu.');}
+  }catch(e){
+    console.error(e);
+    $('progressCard').classList.add('hidden');
+    $('errorCard').classList.remove('hidden');
+    $('errorMessage').textContent = e.message || 'Dokument sa nepodarilo spracovať. Skúste kvalitnejšiu fotografiu.';
+    $('errorCard').scrollIntoView({behavior:'smooth'});
+  }
+};
+$('retryBtn').onclick = () => {
+  resetAnalysis();
+};
+$('continueBtn').onclick = () => {
+  $('errorCard').classList.add('hidden');
+  renderFields();
 };
 $('demoBtn').onclick=()=>{
   rawAttendance='Demo údaje – jún 2026'; rawPayslip='Demo údaje – jún 2026';
