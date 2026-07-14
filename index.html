@@ -58,9 +58,9 @@
           <div>
             <div class="step">KROK 2</div>
             <h2>Skontrolujte a opravte načítané údaje</h2>
-            <p>Červené polia sa nepodarilo spoľahlivo prečítať. Doplňte ich podľa dokumentov. Až potom spustite kontrolu.</p>
+            <p>Podľa dokumentov prosím skontrolujte a v prípade potreby opravte všetky hodnoty. Polia, ktoré sa nepodarilo načítať, sú prázdne a červenej farby.</p>
           </div>
-          <button id="calculateBtn" class="primary">3. Skontrolovať mzdu</button>
+          <button id="calculateBtn" class="primary">Potvrdiť údaje a skontrolovať mzdu</button>
         </div>
         <div id="missingNotice" class="notice hidden"></div>
         <div id="fields" class="field-groups"></div>
@@ -83,6 +83,10 @@
   </main>
 
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <script src="parser/attendance.js"></script>
+  <script src="parser/payslip.js"></script>
+  <script src="engine/calculator.js"></script>
+  <script src="ui/report.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
