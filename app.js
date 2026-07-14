@@ -257,29 +257,64 @@ function row(name,expected,actual,tolerance=0.05,note=''){
   })();
 }
 $('calculateBtn').onclick=()=>{
-  const missing=[];
-  for(const [key,label] of allFields){
-    const input=$(`f_${key}`);
-    if(!input) continue;
-    values[key]=normalizeNumber(input.value);
-    input.closest('.field').classList.toggle('missing', values[key]===null);
-    if(values[key]===null && key!=='otherPaid' && key!=='personalMonthly' && key!=='otherMonthly' && key!=='personalPaid') missing.push(label);
-  }
-  if(missing.length){
-    $('missingNotice').classList.remove('hidden');
-    $('missingNotice').textContent=`Doplňte chýbajúce údaje: ${missing.slice(0,4).join(', ')}${missing.length>4?'…':''}`;
-    $('confirmCard').scrollIntoView({behavior:'smooth'}); return;
-  }
-  if(values.otherPaid===null) values.otherPaid=0;
-  if(values.personalMonthly===null) values.personalMonthly=0;
-  if(values.otherMonthly===null) values.otherMonthly=0;
-  if(values.personalPaid===null) values.personalPaid=0;
-  const summary = ns.buildResultSummary ? ns.buildResultSummary(values) : null;
-  const checks = summary ? summary.checks : [];
-  const bad = summary ? summary.bad : [];
-  const totalDiff = summary ? summary.totalDiff : 0;
-  const verdict=$('verdict'); verdict.className = summary ? summary.verdictClass : ('verdict '+(bad.length===0?'ok':bad.length<=2?'warn':'bad'));
+  const btnText = $('calculateBtn').textContent;
+  $('calculateBtn').disabled = true;
+  $('calculateBtn').textContent = '⏳ Spracúvam...';
+  
+  try{
+    const missing=[];
+    let firstMissingField = null;
+    
+    for(const [key,label] of allFields){
+      const input=$(`f_${key}`);
+      if(!input){
+        console.warn(`Pole ${key} nemá vstupný prvok`);
+        continue;
+      }
+      const val = normalizeNumber(input.value);
+      values[key] = val;
+      const fieldContainer = input.closest('.field');
+      if(fieldContainer){
+        fieldContainer.classList.toggle('missing', val===null);
+      }
+      if(val===null && key!=='otherPaid' && key!=='personalMonthly' && key!=='otherMonthly' && key!=='personalPaid'){
+        missing.push({key, label});
+        if(!firstMissingField) firstMissingField = fieldContainer;
+      }
+    }
+    
+    if(missing.length){
+      $('calculateBtn').disabled = false;
+      $('calculateBtn').textContent = btnText;
+      const labels = missing.map(m=>m.label).slice(0,3).join(', ');
+      $('missingNotice').classList.remove('hidden');
+      $('missingNotice').innerHTML = `<strong>⚠️ Chýbajúce údaje:</strong><br>${labels}${missing.length>3?'<br>a ďalšie...':''}`;
+      if(firstMissingField) firstMissingField.scrollIntoView({behavior:'smooth', block:'center'});
+      else $('confirmCard').scrollIntoView({behavior:'smooth'});
+      return;
+    }
+    
+    const summary = ns.buildResultSummary ? ns.buildResultSummary(values) : null;
+    const checks = summary ? summary.checks : [];
+    const bad = summary ? summary.bad : [];
+    const totalDiff = summary ? summary.totalDiff : 0;
+    
+    const verdict=$('verdict');
+  verdict.className = summary ? summary.verdictClass : ('verdict '+(bad.length===0?'ok':bad.length<=2?'warn':'bad'));
   verdict.innerHTML = summary ? summary.verdictHtml : `<h2>${bad.length===0?'Kontrolované položky sedia':'Našli sme '+bad.length+' nezrovnalosti'}</h2><p>${bad.length===0?'V rozsahu, ktorý táto verzia dokáže overiť, je výpočet správny.':`Súčet rozdielov pri peňažných položkách: <strong>${money(totalDiff)}</strong>.`}</p>`;
   $('results').innerHTML = summary ? summary.resultsHtml : checks.map(x=>`<div class="result-row"><strong>${x.name}<br><small>${x.note}</small></strong><span>Očakávané<br><b>${x.name.includes('počet hodín')?x.expected.toFixed(2)+' h':money(x.expected)}</b></span><span>Na páske<br><b>${x.name.includes('počet hodín')?x.actual.toFixed(2)+' h':money(x.actual)}</b></span><span class="status ${x.status}">${x.label}${x.status==='bad'?`<br>${x.name.includes('počet hodín')?x.diff.toFixed(2)+' h':money(x.diff)}`:''}</span></div>`).join('');
-  $('resultCard').classList.remove('hidden'); $('resultCard').scrollIntoView({behavior:'smooth'});
+  
+  $('confirmCard').classList.add('hidden');
+  $('resultCard').classList.remove('hidden');
+  $('resultCard').scrollIntoView({behavior:'smooth'});
+  
+  $('calculateBtn').disabled = false;
+  $('calculateBtn').textContent = '✓ Výpočet hotový';
+  setTimeout(()=>{ $('calculateBtn').textContent = btnText; }, 2000);
+  }catch(e){
+    console.error('Chyba pri výpočte:', e);
+    $('calculateBtn').disabled = false;
+    $('calculateBtn').textContent = '❌ ' + btnText;
+    alert('Chyba pri výpočte: ' + e.message);
+  }
 };
