@@ -89,29 +89,28 @@ async function fileToImages(file){
     return images;
   }
   const url = URL.createObjectURL(file);
-  const img = new Image();
-  return new Promise((resolve)=>{
-    img.onload = async () => {
-      const canvas = document.createElement('canvas');
-      const compressed = await compressImage(url);
-      resolve([compressed]);
-    };
-    img.src = url;
-  });
+  const compressed = await compressImage(url);
+  return [compressed];
 }
 async function compressImage(dataUrl){
   return new Promise((resolve)=>{
     const img = new Image();
     img.onload = () => {
+      const MAX_DIMENSION = 1800;
+      const maxSize = Math.max(img.width, img.height);
+      if(maxSize <= MAX_DIMENSION){
+        resolve(dataUrl);
+        return;
+      }
+      const scale = MAX_DIMENSION / maxSize;
       const canvas = document.createElement('canvas');
-      const maxDim = 1800;
-      const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
       canvas.width = img.width * scale;
       canvas.height = img.height * scale;
       const ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      resolve(canvas.toDataURL('image/jpeg', 0.85));
+      resolve(canvas.toDataURL('image/jpeg', 0.87));
     };
+    img.onerror = () => resolve(dataUrl);
     img.src = dataUrl;
   });
 }
