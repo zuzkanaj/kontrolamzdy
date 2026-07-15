@@ -6,15 +6,16 @@
   }
 
   function row(name, expected, actual, tolerance = 0.05, note = '') {
-    const diff = actual - expected;
-    const ok = Math.abs(diff) <= tolerance;
+    const invalid = !Number.isFinite(expected) || !Number.isFinite(actual);
+    const diff = invalid ? NaN : actual - expected;
+    const ok = invalid ? false : Math.abs(diff) <= tolerance;
     return {
       name,
       expected,
       actual,
       diff,
-      status: ok ? 'ok' : 'bad',
-      label: ok ? 'Sedí' : 'Nesedí',
+      status: invalid ? 'unknown' : ok ? 'ok' : 'bad',
+      label: invalid ? 'Nedá sa overiť – chýba údaj' : ok ? 'Sedí' : 'Nesedí',
       note
     };
   }
@@ -35,11 +36,16 @@
     checks.push(row('Náhrada za dovolenku', values.average * values.vacationHoursAttendance, values.vacationPaid, 0.15, 'Priemer pre náhrady × hodiny dovolenky'));
 
     const bad = checks.filter((x) => x.status === 'bad');
+    const unknown = checks.filter((x) => x.status === 'unknown');
     const moneyChecks = bad.filter((x) => !x.name.includes('počet hodín'));
-    const totalDiff = moneyChecks.reduce((a, b) => a + b.diff, 0);
-    const verdictClass = 'verdict ' + (bad.length === 0 ? 'ok' : bad.length <= 2 ? 'warn' : 'bad');
-    const verdictHtml = `<h2>${bad.length === 0 ? 'Kontrolované položky sedia' : 'Našli sme ' + bad.length + ' nezrovnalosti'}</h2><p>${bad.length === 0 ? 'V rozsahu, ktorý táto verzia dokáže overiť, je výpočet správny.' : `Súčet rozdielov pri peňažných položkách: <strong>${money(totalDiff)}</strong>.`}</p>`;
-    const resultsHtml = checks.map((x) => `<div class="result-row"><strong>${x.name}<br><small>${x.note}</small></strong><span>Očakávané<br><b>${x.name.includes('počet hodín') ? x.expected.toFixed(2) + ' h' : money(x.expected)}</b></span><span>Na páske<br><b>${x.name.includes('počet hodín') ? x.actual.toFixed(2) + ' h' : money(x.actual)}</b></span><span class="status ${x.status}">${x.label}${x.status === 'bad' ? `<br>${x.name.includes('počet hodín') ? x.diff.toFixed(2) + ' h' : money(x.diff)}` : ''}</span></div>`).join('');
+    const totalDiff = moneyChecks.reduce((a, b) => a + (Number.isFinite(b.diff) ? b.diff : 0), 0);
+    const verdictClass = 'verdict ' + (bad.length === 0 ? (unknown.length === 0 ? 'ok' : 'warn') : bad.length <= 2 ? 'warn' : 'bad');
+    const verdictHtml = `<h2>${bad.length === 0 ? (unknown.length === 0 ? 'Kontrolované položky sedia' : 'Niektoré položky sa nedajú overiť') : 'Našli sme ' + bad.length + ' nezrovnalosti'}</h2><p>${bad.length === 0 ? (unknown.length === 0 ? 'V rozsahu, ktorý táto verzia dokáže overiť, je výpočet správny.' : 'Niektoré riadky obsahujú neúplné údaje a nedajú sa bezpečne overiť.') : `Súčet rozdielov pri peňažných položkách: <strong>${money(totalDiff)}</strong>.`}</p>`;
+    const formatValue = (value, isHours) => {
+      if(!Number.isFinite(value)) return 'Nedá sa overiť – chýba údaj';
+      return isHours ? value.toFixed(2) + ' h' : money(value);
+    };
+    const resultsHtml = checks.map((x) => `<div class="result-row"><strong>${x.name}<br><small>${x.note}</small></strong><span>Očakávané<br><b>${x.name.includes('počet hodín') ? formatValue(x.expected, true) : formatValue(x.expected, false)}</b></span><span>Na páske<br><b>${x.name.includes('počet hodín') ? formatValue(x.actual, true) : formatValue(x.actual, false)}</b></span><span class="status ${x.status}">${x.label}${x.status === 'bad' ? `<br>${x.name.includes('počet hodín') ? formatValue(x.diff, true) : formatValue(x.diff, false)}` : ''}</span></div>`).join('');
 
     return {
       checks,
